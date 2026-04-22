@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+output/
+vehicles.db
+*.json
+*.csv
+.env
+.venv/
+env/
+venv/

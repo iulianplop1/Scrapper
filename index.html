@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>999.md Scraper — Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        :root{
+            --bg-primary:#0a0e1a;--bg-secondary:#111827;--bg-card:#1a2035;--bg-card-hover:#1f2847;
+            --border:rgba(99,102,241,.15);--border-bright:rgba(99,102,241,.4);
+            --text-primary:#f1f5f9;--text-secondary:#94a3b8;--text-muted:#64748b;
+            --accent:#6366f1;--accent-bright:#818cf8;--accent-glow:rgba(99,102,241,.25);
+            --green:#22c55e;--green-glow:rgba(34,197,94,.2);--amber:#f59e0b;--red:#ef4444;--cyan:#06b6d4;
+            --radius:12px;--radius-sm:8px;--shadow:0 4px 24px rgba(0,0,0,.4);
+        }
+        body{font-family:'Inter',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;overflow-x:hidden}
+        body::before{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(ellipse at 20% 20%,rgba(99,102,241,.06) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(6,182,212,.04) 0%,transparent 50%);z-index:-1;animation:bgP 15s ease-in-out infinite alternate}
+        @keyframes bgP{0%{transform:translate(0,0) scale(1)}100%{transform:translate(-2%,-1%) scale(1.02)}}
+
+        .header{padding:16px 28px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);backdrop-filter:blur(20px);background:rgba(10,14,26,.7);position:sticky;top:0;z-index:100}
+        .header-brand{display:flex;align-items:center;gap:12px}
+        .header-logo{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--cyan));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;box-shadow:0 0 20px var(--accent-glow)}
+        .header-title{font-size:16px;font-weight:700;letter-spacing:-.3px}
+        .header-subtitle{font-size:11px;color:var(--text-muted)}
+        .header-status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)}
+        .status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green-glow)}
+        .status-dot.idle{background:var(--text-muted);box-shadow:none}.status-dot.running{background:var(--amber);animation:pulse 1.5s infinite}.status-dot.error{background:var(--red)}
+        @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+
+        .container{max-width:1500px;margin:0 auto;padding:20px 28px}
+        .grid-main{display:grid;grid-template-columns:340px 1fr;gap:20px}
+        @media(max-width:1024px){.grid-main{grid-template-columns:1fr}}
+
+        .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);transition:border-color .3s;margin-bottom:16px}
+        .card:hover{border-color:var(--border-bright)}
+        .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+        .card-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-secondary)}
+
+        /* ── Form ─────────────────────────────── */
+        .form-group{margin-bottom:14px}
+        .form-label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text-secondary);margin-bottom:6px}
+        .form-input,.form-select{width:100%;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:12px;transition:all .2s;outline:none}
+        .form-input:focus,.form-select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+        .form-input::placeholder{color:var(--text-muted)}
+        .form-select{font-family:'Inter',sans-serif;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+        .form-select option{background:var(--bg-secondary);color:var(--text-primary)}
+        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+        .form-hint{font-size:10px;color:var(--text-muted);margin-top:4px}
+
+        .slider-container{display:flex;align-items:center;gap:12px}
+        .slider{flex:1;-webkit-appearance:none;height:5px;background:var(--bg-secondary);border-radius:3px;outline:none}
+        .slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;background:linear-gradient(135deg,var(--accent),var(--accent-bright));border-radius:50%;cursor:pointer;box-shadow:0 0 10px var(--accent-glow)}
+        .slider-value{min-width:44px;text-align:center;font-family:'JetBrains Mono',monospace;font-weight:600;font-size:14px;color:var(--accent-bright)}
+
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;border:none;border-radius:var(--radius-sm);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .25s;text-transform:uppercase;letter-spacing:.5px}
+        .btn-primary{width:100%;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;box-shadow:0 4px 20px var(--accent-glow)}
+        .btn-primary:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 30px rgba(99,102,241,.4)}
+        .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+        .btn-sm{padding:6px 14px;font-size:11px}
+        .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text-secondary)}
+        .btn-outline:hover{border-color:var(--accent);color:var(--accent-bright);background:rgba(99,102,241,.05)}
+
+        .progress-bar-track{width:100%;height:5px;background:var(--bg-secondary);border-radius:3px;overflow:hidden;margin:12px 0}
+        .progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--cyan));border-radius:3px;transition:width .5s;box-shadow:0 0 10px var(--accent-glow)}
+        .progress-info{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted)}
+
+        .log-container{background:var(--bg-secondary);border-radius:var(--radius-sm);padding:10px;max-height:140px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;margin-top:8px}
+        .log-container::-webkit-scrollbar{width:3px}.log-container::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+        .log-entry{color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+        .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+        .stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;transition:all .3s}
+        .stat-card:hover{border-color:var(--border-bright);transform:translateY(-2px)}
+        .stat-value{font-size:24px;font-weight:800;background:linear-gradient(135deg,var(--text-primary),var(--accent-bright));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .stat-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-top:4px}
+
+        .tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--bg-secondary);border-radius:var(--radius-sm);padding:3px}
+        .tab{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;border-radius:6px;transition:all .2s;border:none;background:none}
+        .tab:hover{color:var(--text-secondary)}.tab.active{background:var(--bg-card);color:var(--text-primary);box-shadow:0 2px 8px rgba(0,0,0,.2)}
+
+        .table-wrapper{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border)}
+        .data-table{width:100%;border-collapse:collapse;font-size:12px}
+        .data-table th{background:var(--bg-secondary);padding:10px 14px;text-align:left;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-secondary);border-bottom:1px solid var(--border);position:sticky;top:0;white-space:nowrap}
+        .data-table td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-primary);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+        .data-table tr:hover td{background:var(--bg-card-hover)}
+        .data-table .price-cell{color:var(--green);font-weight:600;font-family:'JetBrains Mono',monospace}
+        .data-table .make-cell{font-weight:600}
+        .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500}
+        .pill-fuel{background:rgba(6,182,212,.15);color:var(--cyan)}.pill-trans{background:rgba(245,158,11,.15);color:var(--amber)}.pill-body{background:rgba(99,102,241,.15);color:var(--accent-bright)}
+
+        .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px}
+        @media(max-width:900px){.charts-grid{grid-template-columns:1fr}.stats-row{grid-template-columns:repeat(2,1fr)}}
+        .chart-container{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+        .chart-title{font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px}
+
+        .bar-chart-item{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+        .bar-label{min-width:75px;font-size:11px;font-weight:500;color:var(--text-secondary);text-align:right}
+        .bar-track{flex:1;height:22px;background:var(--bg-secondary);border-radius:4px;overflow:hidden}
+        .bar-fill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;padding-left:8px;font-size:10px;font-weight:600;color:#fff}
+        .bar-fill.g1{background:linear-gradient(90deg,#6366f1,#818cf8)}.bar-fill.g2{background:linear-gradient(90deg,#06b6d4,#22d3ee)}.bar-fill.g3{background:linear-gradient(90deg,#f59e0b,#fbbf24)}.bar-fill.g4{background:linear-gradient(90deg,#22c55e,#4ade80)}.bar-fill.g5{background:linear-gradient(90deg,#ef4444,#f87171)}.bar-fill.g6{background:linear-gradient(90deg,#a855f7,#c084fc)}
+        .bar-count{min-width:28px;font-size:11px;font-weight:600;color:var(--text-secondary)}
+
+        .files-list{list-style:none}
+        .file-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:4px;background:var(--bg-secondary);transition:background .2s}
+        .file-item:hover{background:var(--bg-card-hover)}
+        .file-name{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-primary)}
+        .file-size{font-size:10px;color:var(--text-muted)}
+        .file-download{color:var(--accent-bright);text-decoration:none;font-size:11px;font-weight:500}
+        .file-download:hover{text-decoration:underline}
+
+        .empty-state{text-align:center;padding:40px 20px;color:var(--text-muted)}
+        .empty-state-icon{font-size:40px;margin-bottom:12px;opacity:.3}
+        .empty-state-text{font-size:13px;line-height:1.6}
+
+        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}.fade-in{animation:fadeIn .3s ease forwards}
+        ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+        .custom-scroll::-webkit-scrollbar{width:4px}.custom-scroll::-webkit-scrollbar-thumb{background:rgba(99,102,241,.5);border-radius:2px}
+
+        .section-divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+        .speed-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;background:rgba(34,197,94,.12);color:var(--green);margin-left:8px}
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-brand">
+            <div class="header-logo">9</div>
+            <div>
+                <div class="header-title">999.md Scraper <span class="speed-badge">⚡ Parallel</span></div>
+                <div class="header-subtitle">Vehicle Data Extraction Dashboard</div>
+            </div>
+        </div>
+        <div class="header-status">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Ready</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="grid-main">
+            <!-- ── Left Panel ──────────────────────── -->
+            <div>
+                <!-- Filters -->
+                <div class="card">
+                    <div class="card-header"><span class="card-title">🎯 Filters & Parameters</span></div>
+
+                    <div class="form-group">
+                        <label class="form-label">Number of Vehicles (Max 80,000)</label>
+                        <input type="number" class="form-input" id="inputLimit" min="1" max="80000" value="20">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">💰 Price Range (€)</label>
+                        <div class="form-row">
+                            <input type="number" class="form-input" id="priceMin" placeholder="Min" min="0">
+                            <input type="number" class="form-input" id="priceMax" placeholder="Max" min="0">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">📅 Year Range</label>
+                        <div class="form-row">
+                            <input type="number" class="form-input" id="yearMin" placeholder="From" min="1990" max="2026">
+                            <input type="number" class="form-input" id="yearMax" placeholder="To" min="1990" max="2026">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">🛣️ Max Mileage (km)</label>
+                        <input type="number" class="form-input" id="mileageMax" placeholder="e.g. 150000" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">⛽ Fuel Type</label>
+                        <select class="form-select" id="fuelType">
+                            <option value="">All</option>
+                            <option value="22">Gasoline (Benzină)</option>
+                            <option value="24">Diesel</option>
+                            <option value="12617">Electric</option>
+                            <option value="23">Hybrid</option>
+                            <option value="12618">Plug-in Hybrid</option>
+                            <option value="748">LPG (Gas)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">⚙️ Transmission</label>
+                        <select class="form-select" id="transmission">
+                            <option value="">All</option>
+                            <option value="4">Manual (Mecanică)</option>
+                            <option value="5">Automatic (Automată)</option>
+                            <option value="142">Robotic (Robotizată)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">🚗 Body Type</label>
+                        <select class="form-select" id="bodyType">
+                            <option value="">All</option>
+                            <option value="143">Sedan</option>
+                            <option value="145">Hatchback</option>
+                            <option value="144">Wagon / Universal</option>
+                            <option value="148">SUV</option>
+                            <option value="4721">Crossover</option>
+                            <option value="146">Coupe</option>
+                            <option value="147">Cabrio</option>
+                            <option value="149">Minivan</option>
+                            <option value="150">Pickup</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-primary" id="btnScrape" style="flex:1" onclick="startScrape()">🚀 Launch Extraction</button>
+                        <button class="btn btn-outline" id="btnCancel" onclick="cancelScrape()" style="display:none;flex:0 0 auto;border-color:var(--red);color:var(--red)">🛑 Stop</button>
+                    </div>
+                    <div class="form-hint" style="text-align:center;margin-top:6px">Filters are applied on 999.md before scraping — only matching vehicles are extracted</div>
+                </div>
+
+                <!-- Progress -->
+                <div class="card">
+                    <div class="card-header"><span class="card-title">📡 Live Progress</span></div>
+                    <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+                    <div class="progress-info"><span id="progressCount">0 / 0</span><span id="progressPct">0%</span></div>
+                    <div class="log-container" id="liveLog"><div class="log-entry" style="color:var(--text-muted)">Awaiting job...</div></div>
+                </div>
+
+                <!-- Files -->
+                <div class="card">
+                    <div class="card-header"><span class="card-title">📁 Exports</span><button class="btn btn-sm btn-outline" onclick="loadFiles()">Refresh</button></div>
+                    <ul class="files-list" id="filesList"><li style="padding:16px;text-align:center;color:var(--text-muted);font-size:11px">No exports yet</li></ul>
+                </div>
+            </div>
+
+            <!-- ── Right Panel ─────────────────────── -->
+            <div>
+                <div class="stats-row">
+                    <div class="stat-card"><div class="stat-value" id="statTotal">0</div><div class="stat-label">Vehicles</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statAvgPrice">—</div><div class="stat-label">Avg Price</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statMakes">0</div><div class="stat-label">Brands</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statAvgKm">—</div><div class="stat-label">Avg Mileage</div></div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('table',this)">📋 Data Table</button>
+                    <button class="tab" onclick="switchTab('charts',this)">📊 Analytics</button>
+                </div>
+
+                <div id="tabTable">
+                    <div class="table-wrapper" style="max-height:560px;overflow-y:auto">
+                        <table class="data-table" id="dataTable">
+                            <thead><tr><th>#</th><th>Make</th><th>Model</th><th>Year</th><th>Price</th><th>Mileage</th><th>Fuel</th><th>Trans.</th><th>Body</th><th>Color</th><th>Link</th></tr></thead>
+                            <tbody id="tableBody"><tr><td colspan="11"><div class="empty-state"><div class="empty-state-icon">🚗</div><div class="empty-state-text">No data yet. Set filters and launch extraction.<br>Or loading previous results...</div></div></td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="tabCharts" style="display:none">
+                    <div class="charts-grid">
+                        <div class="chart-container"><div class="chart-title">🏭 By Make</div><div id="chartMakes"></div></div>
+                        <div class="chart-container"><div class="chart-title">⛽ Fuel Types</div><div id="chartFuel"></div></div>
+                        <div class="chart-container"><div class="chart-title">📅 By Year</div><div id="chartYears"></div></div>
+                        <div class="chart-container"><div class="chart-title">💰 Price Ranges</div><div id="chartPrices"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let vehicles = [];
+    let storedVehicles = [];
+    let dbCurrentPage = 1;
+    const dbItemsPerPage = 50;
+    let pollTimer = null;
+    let lastProgressTotal = 0;
+
+    const slider = document.getElementById('inputLimit');
+
+    function switchTab(t, el) {
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('tabTable').style.display = t === 'table' ? 'block' : 'none';
+        document.getElementById('tabCharts').style.display = t === 'charts' ? 'block' : 'none';
+        if (t === 'charts') renderCharts();
+    }
+
+    async function startScrape() {
+        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.protocol !== 'file:') {
+            alert("This is a live demo! Please run the app locally to use the data extraction and API functionality.");
+            return;
+        }
+        const limit = parseInt(slider.value);
+        const btn = document.getElementById('btnScrape');
+        btn.disabled = true; btn.innerHTML = '⏳ Extracting...';
+        document.getElementById('btnCancel').style.display = 'inline-flex';
+        vehicles = []; lastProgressTotal = 0; updateUI(); clearLog();
+        addLog('system', `Starting parallel extraction of ${limit} vehicles...`);
+        updateStatus('running', 'Scraping...');
+
+        const body = {
+            url: "https://999.md/ro/list/transport/cars",
+            limit,
+            price_min: intVal('priceMin'),
+            price_max: intVal('priceMax'),
+            year_min: intVal('yearMin'),
+            year_max: intVal('yearMax'),
+            mileage_max: intVal('mileageMax'),
+            fuel_type: document.getElementById('fuelType').value || null,
+            transmission: document.getElementById('transmission').value || null,
+            body_type: document.getElementById('bodyType').value || null,
+            currency: 'eur',
+        };
+
+        try {
+            const r = await fetch('/api/scrape', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+            const d = await r.json();
+            if (d.error) { addLog('error', d.error); updateStatus('error', d.error); resetBtn(); return; }
+            addLog('system', `Job started → polling...`);
+            startPolling(limit);
+        } catch (e) { addLog('error', e.message); updateStatus('error', 'Connection failed'); resetBtn(); }
+    }
+
+    function intVal(id) { const v = document.getElementById(id).value; return v ? parseInt(v) : null; }
+    function resetBtn() { 
+        const b = document.getElementById('btnScrape'); 
+        b.disabled = false; b.innerHTML = '🚀 Launch Extraction'; 
+        const c = document.getElementById('btnCancel');
+        c.style.display = 'none'; c.disabled = false; c.innerHTML = '🛑 Stop';
+    }
+
+    async function cancelScrape() {
+        const btnC = document.getElementById('btnCancel');
+        btnC.disabled = true; btnC.innerHTML = '⏳ Stopping...';
+        try {
+            await fetch('/api/cancel', { method: 'POST' });
+            addLog('system', 'Requested cancellation...');
+        } catch(e) {}
+    }
+
+    function startPolling(target) {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = setInterval(async () => {
+            try {
+                const sr = await fetch('/api/status'); const s = await sr.json();
+                const pct = target > 0 ? Math.min(100, (s.collected / target) * 100) : 0;
+                document.getElementById('progressFill').style.width = pct + '%';
+                document.getElementById('progressCount').textContent = `${s.collected} / ${target}`;
+                document.getElementById('progressPct').textContent = Math.round(pct) + '%';
+                
+                if (s.progress && s.progress_total > lastProgressTotal) {
+                    const newCount = s.progress_total - lastProgressTotal;
+                    const sliceStart = Math.max(0, s.progress.length - newCount);
+                    for (let i = sliceStart; i < s.progress.length; i++) {
+                        const p = s.progress[i];
+                        if (p.type === 'skip') addLog('system', `⏭️ Duplicate skipped: ${p.url}`);
+                    }
+                    lastProgressTotal = s.progress_total;
+                }
+
+                const dr = await fetch('/api/results'); const d = await dr.json();
+                if (d.vehicles.length > vehicles.length) {
+                    for (let i = vehicles.length; i < d.vehicles.length; i++) {
+                        const v = d.vehicles[i];
+                        addLog('vehicle', `[${i+1}] ${v.make||'?'} ${v.model||'?'} — ${v.price||'?'}`);
+                    }
+                    vehicles = d.vehicles; updateUI();
+                }
+
+                if (s.complete) {
+                    if (pollTimer) clearInterval(pollTimer);
+                    resetBtn();
+                    if (s.error) { updateStatus('error', s.error); addLog('error', s.error); }
+                    else {
+                        const spd = s.duration && s.collected ? ` (${(s.duration/s.collected).toFixed(1)}s/item)` : '';
+                        updateStatus('complete', `Done — ${s.collected} vehicles${spd}`);
+                        addLog('system', `✓ Complete! ${s.collected} vehicles${spd}`);
+                        loadDatabase();
+                    }
+                    loadFiles();
+                }
+            } catch(e) {}
+        }, 1200);
+    }
+
+    function updateStatus(st, txt) { document.getElementById('statusDot').className = 'status-dot ' + st; document.getElementById('statusText').textContent = txt; }
+    function clearLog() { document.getElementById('liveLog').innerHTML = ''; }
+    function addLog(type, msg) {
+        const log = document.getElementById('liveLog');
+        const e = document.createElement('div'); e.className = 'log-entry fade-in';
+        const t = new Date().toLocaleTimeString();
+        const colors = { vehicle: 'var(--green)', error: 'var(--red)', system: 'var(--accent-bright)' };
+        e.innerHTML = `<span style="color:var(--text-muted)">${t}</span> <span style="color:${colors[type]||'var(--text-secondary)'}">${msg}</span>`;
+        log.appendChild(e); log.scrollTop = log.scrollHeight;
+    }
+
+    function updateUI() { updateTable(); updateStats(); }
+
+    function updateTable() {
+        const tb = document.getElementById('tableBody');
+        let html = '';
+
+        if (vehicles.length > 0) {
+            html += `<tr class="section-divider"><td colspan="11" style="background:var(--bg-card);font-weight:700;color:var(--green);padding:10px 14px;border-left:4px solid var(--green);">✨ NEW EXTRACTIONS (${vehicles.length})</td></tr>`;
+            html += renderRows(vehicles, 'new');
+        }
+
+        if (storedVehicles.length > 0) {
+            const newUrls = new Set(vehicles.map(v => v.url));
+            const filteredStored = storedVehicles.filter(v => !newUrls.has(v.url));
+            
+            if (filteredStored.length > 0) {
+                const maxPage = Math.ceil(filteredStored.length / dbItemsPerPage);
+                const startIdx = (dbCurrentPage - 1) * dbItemsPerPage;
+                const pageItems = filteredStored.slice(startIdx, startIdx + dbItemsPerPage);
+
+                html += `<tr class="section-divider"><td colspan="11" style="background:var(--bg-secondary);font-weight:700;color:var(--text-muted);padding:0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-left:4px solid var(--text-muted);">
+                        <span>💾 HISTORICAL DATABASE (${filteredStored.length})</span>
+                        <span style="font-size:11px;font-weight:500;">
+                            <button class="btn btn-sm btn-outline" style="padding:4px 8px" onclick="renderStoredPage('prev'); event.stopPropagation();" ${dbCurrentPage===1?'disabled':''}>◀ Prev</button>
+                            <span style="margin:0 8px">Page ${dbCurrentPage} of ${maxPage}</span>
+                            <button class="btn btn-sm btn-outline" style="padding:4px 8px" onclick="renderStoredPage('next'); event.stopPropagation();" ${dbCurrentPage===maxPage?'disabled':''}>Next ▶</button>
+                        </span>
+                    </div>
+                </td></tr>`;
+                html += renderRows(pageItems, 'stored');
+            }
+        }
+
+        if (!html) {
+            html = '<tr><td colspan="11"><div class="empty-state"><div class="empty-state-icon">🚗</div><div class="empty-state-text">No data yet. Set filters and launch extraction.</div></div></td></tr>';
+        }
+
+        tb.innerHTML = html;
+    }
+
+    function renderStoredPage(dir) {
+        if (dir === 'next') dbCurrentPage++;
+        else if (dir === 'prev' && dbCurrentPage > 1) dbCurrentPage--;
+        updateTable();
+    }
+
+    function renderRows(arr, prefix) {
+        return arr.map((v, i) => {
+            const id = prefix + '-' + i;
+            const row = `<tr class="fade-in" onclick="toggleDetails('${id}')" style="cursor:pointer" title="Click to view details">
+                <td style="color:var(--text-muted)">${i+1}</td>
+                <td class="make-cell">${v.make||'—'}</td>
+                <td>${v.model||'—'}</td>
+                <td>${v.year||'—'}</td>
+                <td class="price-cell">${v.price||'—'}</td>
+                <td>${v.mileage||'—'}</td>
+                <td>${v.fuel_type?`<span class="pill pill-fuel">${v.fuel_type}</span>`:'—'}</td>
+                <td>${v.transmission?`<span class="pill pill-trans">${v.transmission}</span>`:'—'}</td>
+                <td>${v.body_type?`<span class="pill pill-body">${v.body_type}</span>`:'—'}</td>
+                <td>${v.color||'—'}</td>
+                <td><a href="${v.url}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent-bright);text-decoration:none">🔗</a></td>
+            </tr>`;
+            
+            const desc = v.description || 'No description provided by seller.';
+            const safeDesc = desc.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const img = v.main_image ? `<img src="${v.main_image}" style="width:280px;height:200px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border);box-shadow:var(--shadow)">` : `<div style="width:280px;height:200px;background:var(--bg-card);border:1px dashed var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-muted)">No Image Available</div>`;
+            
+            const details = `<tr id="details-${id}" style="display:none;background:rgba(99,102,241,0.05);border-bottom:2px solid var(--border-bright);">
+                <td colspan="11" style="padding:20px;white-space:normal;border:none;">
+                    <div style="display:flex;gap:24px;align-items:flex-start;">
+                        ${img}
+                        <div style="flex:1;">
+                            <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;letter-spacing:1px;">Seller Description</div>
+                            <div style="font-size:12px;line-height:1.6;color:var(--text-primary);white-space:pre-wrap;max-height:180px;overflow-y:auto;padding-right:12px;" class="custom-scroll">${safeDesc}</div>
+                        </div>
+                    </div>
+                </td>
+            </tr>`;
+            return row + details;
+        }).join('');
+    }
+
+    function toggleDetails(id) {
+        const el = document.getElementById('details-' + id);
+        if (el.style.display === 'none') {
+            document.querySelectorAll('[id^="details-"]').forEach(d => d.style.display = 'none');
+            el.style.display = 'table-row';
+        } else {
+            el.style.display = 'none';
+        }
+    }
+
+    function updateStats() {
+        const all = [...vehicles, ...storedVehicles];
+        document.getElementById('statTotal').textContent = all.length;
+        const prices = all.filter(v => v.price_numeric).map(v => v.price_numeric);
+        document.getElementById('statAvgPrice').textContent = prices.length ? Math.round(prices.reduce((a,b)=>a+b,0)/prices.length).toLocaleString()+' €' : '—';
+        document.getElementById('statMakes').textContent = new Set(all.filter(v=>v.make).map(v=>v.make)).size;
+        const kms = all.filter(v => v.mileage_numeric).map(v => v.mileage_numeric);
+        document.getElementById('statAvgKm').textContent = kms.length ? (Math.round(kms.reduce((a,b)=>a+b,0)/kms.length)/1000).toFixed(0)+'k km' : '—';
+    }
+
+    const gs = ['g1','g2','g3','g4','g5','g6'];
+    function renderBar(id, data) {
+        const c = document.getElementById(id);
+        if (!data||!data.length) { c.innerHTML = '<div style="color:var(--text-muted);font-size:11px;padding:16px;text-align:center">No data</div>'; return; }
+        const mx = Math.max(...data.map(d=>d.count));
+        c.innerHTML = data.slice(0,8).map((d,i) => `<div class="bar-chart-item fade-in" style="animation-delay:${i*50}ms">
+            <span class="bar-label">${d.label}</span>
+            <div class="bar-track"><div class="bar-fill ${gs[i%6]}" style="width:${(d.count/mx)*100}%">${d.count>1?d.count:''}</div></div>
+            <span class="bar-count">${d.count}</span>
+        </div>`).join('');
+    }
+
+    function renderCharts() {
+        const all = [...vehicles, ...storedVehicles];
+        if (!all.length) return;
+        const count = (arr, key) => { const c = {}; arr.forEach(v => { if (v[key]) c[v[key]] = (c[v[key]]||0)+1; }); return Object.entries(c).map(([k,v])=>({label:k,count:v})).sort((a,b)=>b.count-a.count); };
+        renderBar('chartMakes', count(all, 'make'));
+        renderBar('chartFuel', count(all, 'fuel_type'));
+        renderBar('chartYears', count(all, 'year').sort((a,b)=>parseInt(b.label)-parseInt(a.label)));
+        const ranges = [{l:'< 5k €',a:0,b:5000},{l:'5-10k €',a:5000,b:10000},{l:'10-15k €',a:10000,b:15000},{l:'15-20k €',a:15000,b:20000},{l:'20-30k €',a:20000,b:30000},{l:'30k+ €',a:30000,b:Infinity}];
+        renderBar('chartPrices', ranges.map(r=>({label:r.l,count:all.filter(v=>v.price_numeric>=r.a&&v.price_numeric<r.b).length})).filter(d=>d.count>0));
+    }
+
+    async function loadFiles() {
+        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.protocol !== 'file:') {
+            const l = document.getElementById('filesList');
+            l.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-muted);font-size:11px">Local files disabled in demo</li>';
+            return;
+        }
+        try {
+            const r = await fetch('/api/files'); const d = await r.json(); const l = document.getElementById('filesList');
+            if (!d.files||!d.files.length) { l.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-muted);font-size:11px">No exports</li>'; return; }
+            l.innerHTML = d.files.slice(0,10).map(f => {
+                const sz = f.size>1024?(f.size/1024).toFixed(1)+' KB':f.size+' B';
+                return `<li class="file-item"><div><div class="file-name">${f.type==='json'?'📄':'📊'} ${f.name}</div><div class="file-size">${sz}</div></div><a href="/api/file/${f.name}" class="file-download" download>Download</a></li>`;
+            }).join('');
+        } catch(e) {}
+    }
+
+    async function loadDatabase() {
+        try {
+            let r;
+            if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.protocol !== 'file:') {
+                r = await fetch('./demo_data.json');
+            } else {
+                r = await fetch('/api/database');
+                if (!r.ok || r.status === 404) r = await fetch('./demo_data.json');
+            }
+            const d = await r.json();
+            if (d.vehicles && d.vehicles.length) {
+                storedVehicles = d.vehicles;
+                updateUI();
+                addLog('system', `Loaded ${storedVehicles.length} vehicles from database.`);
+            }
+        } catch(e) {
+            console.warn("Failed to load demo data", e);
+        }
+    }
+
+    // Init
+    loadDatabase(); loadFiles();
+    </script>
+</body>
+</html>
